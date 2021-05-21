@@ -1,0 +1,6 @@
+find_package(CUDA REQUIRED)
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G")
+add_executable(linked_list main.cpp list_item.cpp)
+set_property(TARGET linked_list PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(linked_list lib ${GTest_LIBS} Threads::Threads ${CUDA_LIBRARIES} cudart cuda)

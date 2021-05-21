@@ -1,0 +1,8 @@
+find_package(GTest)
+find_package(CUDA REQUIRED)
+include_directories(${GTest_INCLUDE_DIRS})
+file(GLOB_RECURSE private_cusources ${CMAKE_CURRENT_SOURCE_DIR}/../private/*.cu)
+file(GLOB_RECURSE private_cppsources ${CMAKE_CURRENT_SOURCE_DIR}/../private/test_*.cpp)
+add_executable(TestChromosomeBase main.cpp ${private_cusources} ${private_cppsources} test_chromosome_base_host.cpp test_chromosome_base_device.cu)
+set_property(TARGET TestChromosomeBase PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(TestChromosomeBase lib ${GTest_LIBS} gtest gtest_main Threads::Threads ${CUDA_LIBRARIES})
