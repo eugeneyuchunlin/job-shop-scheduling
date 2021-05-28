@@ -1,0 +1,16 @@
+#ifndef __MACHINE_H__
+#define __MACHINE_H__
+
+#include <include/machine_base.h>
+#include <map>
+#include <string>
+
+typedef struct machine_t machine_t;
+
+struct machine_t{
+    machine_base_t  base;
+};
+
+void createMachine(machine_t * machine, std::map<std::string, std::string> elements);
+
+#endif
