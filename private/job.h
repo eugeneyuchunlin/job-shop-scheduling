@@ -20,5 +20,10 @@ struct job_t{
 
 void createJob(job_t * job, std::map<std::string, std::string> elements);
 
+__device__ __host__ void initJob(job_t *);
+
+
+__device__ __host__ double jobGetValue(void * _self);
+
 
 #endif

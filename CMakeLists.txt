@@ -7,8 +7,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory(lib)
-
 file(GLOB_RECURSE src ./src/*.cpp)
-add_executable(main main.cpp ${src})
+file(GLOB_RECURSE cu_src ./src/*.cu)
+
+add_executable(main main.cu ${src} ${cu_src})
+set_property(TARGET main PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(main lib)
 # add_subdirectory(tests)
 # add_subdirectory(examples)

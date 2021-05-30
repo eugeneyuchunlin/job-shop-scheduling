@@ -2,6 +2,7 @@
 #include <private/csv.h>
 #include <private/job.h>
 #include <private/machine.h>
+#include <private/population.h>
 #include <iostream>
 #include <string>
 #include "include/job_base.h"
@@ -26,15 +27,32 @@ int main(int argc, const char *argv[])
     csv_t wip(path + "wip.csv", "r", true, true);
     csv_t machine_csv(path + "tools.csv", "r", true, true);
     csv_t eqp_recipe(path + "recipe.csv", "r", true, true);
-    unsigned int AMOUNT_OF_JOBS = wip.nrows();
-    unsigned int AMOUNT_OF_MACHINES = machine_csv.nrows();
+    int AMOUNT_OF_JOBS = wip.nrows();
+    int AMOUNT_OF_MACHINES = machine_csv.nrows();
     
     job_t * jobs;
     machine_t * machines;
     process_time_t ** process_times;
     
     dataPreprocessing(&jobs, &machines, &process_times, wip, machine_csv, eqp_recipe);
-    
+
+    population_t pop = population_t{
+        .population_number = 0,
+        .parameters = {
+            .AMOUNT_OF_JOBS = AMOUNT_OF_JOBS,
+            .AMOUNT_OF_MACHINES = AMOUNT_OF_MACHINES,
+            .AMOUNT_OF_CHROMOSOMES = 100,
+            .EVOLUTION_RATE = 0.2,
+            .SELECTION_RATE = 0.3
+        },
+        .sample = {
+            .jobs = jobs,
+            .machines = machines,
+            .process_times = process_times
+        }
+    }; 
+
+    initPopulation(&pop);
 
     return 0;
 }
@@ -72,6 +90,7 @@ void dataPreprocessing(job_t **_jobs, machine_t ** _machines, process_time_t ***
                                                stof(elements["PROCESS_TIME"]),
                                .ptr_derived_object = NULL};
         }
+        jobs[i].base.size_of_process_time = nrows;
     }
 
     *_jobs = jobs;

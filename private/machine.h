@@ -13,4 +13,5 @@ struct machine_t{
 
 void createMachine(machine_t * machine, std::map<std::string, std::string> elements);
 
+__device__ __host__ void initMachine(machine_t *machine);
 #endif
