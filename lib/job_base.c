@@ -43,19 +43,21 @@ __qualifier__ void set_start_time(job_base_t *self, double start_time)
     self->start_time = start_time;
     if (self->process_time) {
         self->end_time = self->start_time +
-                         self->process_time[self->machine_no].process_time;
+                         self->ptime;
     }
 }
 
 // getter
 __qualifier__ double get_ms_gene(job_base_t *self)
 {
-    return *(self->ms_gene);
+    self->_ms_gene = *(self->ms_gene);
+    return self->_ms_gene;
 }
 
 __qualifier__ double get_os_gene(job_base_t *self)
 {
-    return *(self->os_seq_gene);
+    self->_os_gene = *(self->os_seq_gene);
+    return self->_os_gene;
 }
 
 __qualifier__ unsigned int get_machine_no(job_base_t *self)

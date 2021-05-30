@@ -88,6 +88,9 @@ struct job_base_t {
     double arriv_t;
     double start_time;
     double end_time;
+    double ptime;
+    double _ms_gene;
+    double _os_gene;
 };
 
 struct job_base_operations_t {

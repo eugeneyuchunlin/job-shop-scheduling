@@ -41,7 +41,7 @@ int main(int argc, const char *argv[])
         .parameters = {
             .AMOUNT_OF_JOBS = AMOUNT_OF_JOBS,
             .AMOUNT_OF_MACHINES = AMOUNT_OF_MACHINES,
-            .AMOUNT_OF_CHROMOSOMES = 100,
+            .AMOUNT_OF_CHROMOSOMES = 200,
             .EVOLUTION_RATE = 0.2,
             .SELECTION_RATE = 0.3
         },
@@ -53,6 +53,7 @@ int main(int argc, const char *argv[])
     }; 
 
     initPopulation(&pop);
+    geneticAlgorithm(&pop);
 
     return 0;
 }

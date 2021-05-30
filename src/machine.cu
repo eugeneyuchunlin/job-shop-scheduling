@@ -2,6 +2,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
+#include "include/machine_base.h"
 
 void createMachine(machine_t * machine, std::map<std::string, std::string> elements){
     machine->base.avaliable_time = std::stoi(elements["RECOVER_TIME"]);
