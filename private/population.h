@@ -8,6 +8,18 @@
 #include "job.h"
 #include "machine.h"
 
+
+struct evolution_factors_t{
+    unsigned int *c_selected1;
+    unsigned int *c_selected2;
+    unsigned int *cut_points;
+    unsigned int *range;
+
+    unsigned int *m_selected;
+    unsigned int *gene_idx;
+    double *new_genes;
+};
+
 struct population_t{
     unsigned int population_number;
 
@@ -15,6 +27,7 @@ struct population_t{
         const int AMOUNT_OF_JOBS;
         const int AMOUNT_OF_MACHINES;
         const int AMOUNT_OF_CHROMOSOMES;
+        const int AMOUNT_OF_R_CHROMOSOMES;
         double EVOLUTION_RATE;
         double SELECTION_RATE;
     }parameters;
@@ -51,9 +64,14 @@ struct population_t{
             double **genes;
             double **address_of_cugenes;
         }device_chromosome;
-    }chromosomes; 
+    }chromosomes;
 
+    struct {
+        struct evolution_factors_t device;
+        struct evolution_factors_t host;
+    }evolution_factors;
 };
+
 
 void initPopulation(struct population_t * pop);
 
