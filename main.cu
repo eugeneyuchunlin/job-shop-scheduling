@@ -49,30 +49,49 @@ int main(int argc, const char *argv[])
                 .AMOUNT_OF_CHROMOSOMES = 200,
                 .AMOUNT_OF_R_CHROMOSOMES = 100,
                 .EVOLUTION_RATE = 0.8,
-                .SELECTION_RATE = 0.3
+                .SELECTION_RATE = 0.3,
+                .GENERATIONS = 100
             },
             .sample = {
                 .jobs = jobs,
                 .machines = machines,
                 .process_times = process_times
+            },
+            .chromosomes = {
+                .host_chromosome = {
+                    .AMOUNT_OF_HOST_CHROMOSOMES = 30
+                }
             }
         }; 
     }
     for(int i = 0; i < 10; ++i){
         initPopulation(&sub_populations[i]);
     }
+    
+    for(int g = 0; g < 10; ++g){
+        for(int i = 0; i < 10; ++i){
+            pthread_create(&threads[i], NULL, geneticAlgorithm, &sub_populations[i]);
+        }
 
-    for(int i = 0; i < 10; ++i){
-        pthread_create(&threads[i], NULL, geneticAlgorithm, &sub_populations[i]);
+        for(int i = 0; i < 10; ++i){
+            pthread_join(threads[i], NULL);
+        }
+        swapPopulation(sub_populations, 10);
     }
 
-    for(int i = 0; i < 10; ++i){
-        pthread_join(threads[i], NULL);
-    }
 
+    // output, choose elite(
+    double fitnessValue = 100000;
+    int idx;
     for(int i = 0; i < 10; ++i){
-        copyResult(sub_populations + i);
-    }
+        if(sub_populations[i].best_fitness_value < fitnessValue){
+            idx = i;
+            fitnessValue = sub_populations[i].best_fitness_value;
+        } 
+    } 
+    copyResult(sub_populations + idx, "result.txt");
+
+
     return 0;
 }
 

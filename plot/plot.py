@@ -15,8 +15,8 @@ class machine(): #answer map
         return repr((self.start, self.end, self.assignjob, self.urgent))
 
 if __name__ == '__main__':
-    data = pd.read_excel('data.xlsx',sheet_name= [0,1,2,3])
-    f = open('draw_plot.txt', 'r')
+    data = pd.read_excel('data.xlsx',sheet_name= [0,1,2,3], engine="openpyxl")
+    f = open('result.txt', 'r')
     Mach = []
     count = 0
     for i in range(10):
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     first_label = [0]*11
     for i in range(10):
         for j in range(len(Mach[i].assignjob)): 
-            if (data[0].values[Mach[i].assignjob[j]-1][4]*60) < Mach[i].end[j]:
+            if (data[0].values[Mach[i].assignjob[j]-1][4]*60) < Mach[i].start[j]:
                 colorsave = 'black'
             else:
                 colorsave = color_barh[int(data[0].values[Mach[i].assignjob[j]-1][8][1])]
@@ -44,4 +44,3 @@ if __name__ == '__main__':
     plt.ylabel("Machine ID")
     plt.legend(handles=patches)
     plt.show()
-    

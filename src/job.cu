@@ -12,7 +12,7 @@ void createJob(job_t *job, std::map<std::string, std::string> elements){
     job->base.end_time = job->base.start_time = 0;
     job->base.qty = stoul(elements["QTY"]);
 
-    job->r_qt = stod(elements["R_QT"]);
+    job->r_qt = stod(elements["R_QT"]) * 60;
     job->recipe.ul_recipe = 0;
     strncpy(job->recipe.str_recipe, elements["RECIPE"].c_str(), 6);
     job->urgent = stod(elements["URGENT_W"]);

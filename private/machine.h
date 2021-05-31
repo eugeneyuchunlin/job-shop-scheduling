@@ -10,6 +10,7 @@ typedef struct machine_t machine_t;
 struct machine_t{
     machine_base_t  base;
     double makespan;
+    int scrapped;
 };
 
 void createMachine(machine_t * machine, std::map<std::string, std::string> elements);

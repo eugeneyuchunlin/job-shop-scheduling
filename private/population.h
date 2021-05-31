@@ -30,6 +30,7 @@ struct population_t{
         int AMOUNT_OF_R_CHROMOSOMES;
         double EVOLUTION_RATE;
         double SELECTION_RATE;
+        int GENERATIONS;
     }parameters;
 
     struct {
@@ -54,8 +55,8 @@ struct population_t{
     }host_objects;
 
     struct {
-        int AMOUNT_OF_HOST_CHROMOSOMES;
         struct{
+            int AMOUNT_OF_HOST_CHROMOSOMES;
             chromosome_base_t * chromosomes;
             double **genes;
         }host_chromosome;
@@ -70,11 +71,15 @@ struct population_t{
         struct evolution_factors_t device;
         struct evolution_factors_t host;
     }evolution_factors;
+
+    double best_fitness_value;
 };
 
-void copyResult(struct population_t *pop);
+void copyResult(struct population_t *pop, char * filename);
 
 void initPopulation(struct population_t * pop);
+
+void swapPopulation(struct population_t pop[], int amount_of_populations);
 
 void *geneticAlgorithm(void * pop);
 

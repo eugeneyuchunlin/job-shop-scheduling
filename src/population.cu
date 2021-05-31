@@ -220,6 +220,7 @@ __global__ void scheduling(machine_t **machines,
     job_t *job;
     job_t *prev = NULL;
     double start_time, arrival_time;
+    int scrapped = 0;
 
     if (x < AMOUNT_OF_CHROMOSOMES && y < AMOUNT_OF_MACHINES) {
         iter = machines[x][y].base.root;
@@ -235,11 +236,16 @@ __global__ void scheduling(machine_t **machines,
                 (start_time > arrival_time) ? start_time : arrival_time;
 
             jbops->set_start_time(&job->base, start_time);
+            if(start_time > job->r_qt){
+                scrapped += 1; 
+            }
             start_time = jbops->get_end_time(&job->base);
+            
             iter = iter->next;
             prev = job;
         }
         machines[x][y].makespan = start_time;
+        machines[x][y].scrapped = scrapped;
     }
 }
 
@@ -250,13 +256,15 @@ __global__ void computeFitnessValue(machine_t **machines,
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     double maxmakespan = -1;
+    int totalScrapped = 0;
     if (x < AMOUNT_OF_CHROMOSOMES) {
         for (int i = 0; i < AMOUNT_OF_MACHINES; ++i) {
             if (machines[x][i].makespan > maxmakespan) {
                 maxmakespan = machines[x][i].makespan;
             }
+            totalScrapped += machines[x][i].scrapped;
         }
-        chromosomes[x].fitnessValue = maxmakespan;
+        chromosomes[x].fitnessValue = maxmakespan + totalScrapped * 100;
     }
 }
 
@@ -322,7 +330,8 @@ __global__ void mutation(chromosome_base_t *chromosomes,
 
 __global__ void getMachineJobs(machine_t **machines,
                                unsigned int *job_numbers,
-                               double *seq,
+                               double *start_time,
+                               double *end_time,
                                unsigned int *size,
                                int CIDX,
                                int MIDX)
@@ -334,7 +343,8 @@ __global__ void getMachineJobs(machine_t **machines,
     while (iter) {
         job = ((job_t *) (iter->ptr_derived_object));
         job_numbers[i] = job->base.job_no;
-        seq[i] = job->base.end_time;
+        start_time[i] = job->base.start_time;
+        end_time[i] = job->base.end_time;
         iter = iter->next;
         ++i;
     }
@@ -396,6 +406,26 @@ void initPopulation(struct population_t *pop)
 
     //==================Prepare chromosomes==================================//
 
+    // host
+    pop->chromosomes.host_chromosome.genes = (double **) malloc(
+        sizeof(double *) *
+        pop->chromosomes.host_chromosome.AMOUNT_OF_HOST_CHROMOSOMES);
+    for (int i = 0;
+         i < pop->chromosomes.host_chromosome.AMOUNT_OF_HOST_CHROMOSOMES; ++i) {
+        cudaCheck(
+            cudaMallocHost((void **) &pop->chromosomes.host_chromosome.genes[i],
+                           sizeof(double) * pop->parameters.AMOUNT_OF_JOBS * 2),
+            "cudaMallocHost for host genes");
+    }
+    cudaCheck(
+        cudaMallocHost(
+            (void **) &pop->chromosomes.host_chromosome.chromosomes,
+            sizeof(chromosome_base_t) *
+                pop->chromosomes.host_chromosome.AMOUNT_OF_HOST_CHROMOSOMES),
+        "cudaMallocHost for host chromosomes");
+
+
+    // device
     cudaCheck(
         cudaMalloc(
             (void **) &(pop->chromosomes.device_chromosome.chromosomes),
@@ -651,12 +681,13 @@ void initPopulation(struct population_t *pop)
     cudaDeviceSynchronize();
 }
 
-void copyResult(struct population_t *pop)
+void copyResult(struct population_t *pop, char *filename)
 {
     {
         job_t *jobs;
         machine_t *machines;
         chromosome_base_t *chromosomes;
+        FILE * file = fopen(filename, "w");
 
         cudaCheck(
             cudaMallocHost((void **) &jobs,
@@ -677,13 +708,13 @@ void copyResult(struct population_t *pop)
                        sizeof(machine_t) * pop->parameters.AMOUNT_OF_MACHINES,
                        cudaMemcpyDeviceToHost),
             "cudaMemcpy machines26 from device to host");
-        printf("Happy Debugging\n");
+        // printf("Happy Debugging\n");
 
         unsigned int *d_size, size;
         cudaCheck(cudaMalloc((void **) &d_size, sizeof(unsigned int)),
                   "cudaMalloc for size");
         unsigned int *d_job_numbers, *job_numbers;
-        double *d_seq, *seq;
+        double *d_seq, *seq, *end_time, *d_end_time;
 
         cudaCheck(
             cudaMalloc((void **) &d_job_numbers, sizeof(unsigned int) * 100),
@@ -696,11 +727,18 @@ void copyResult(struct population_t *pop)
                   "for d_seq");
         cudaCheck(cudaMallocHost((void **) &seq, sizeof(double) * 100),
                   "cudaMallocHost for seq");
+       
+        cudaCheck(cudaMalloc((void **) &d_end_time, sizeof(double) * 100),
+                  "cudaMalloc"
+                  "for d_end_time");
+        cudaCheck(cudaMallocHost((void **) &end_time, sizeof(double) * 100),
+                  "cudaMallocHost for end_time");
+       
 
 
         for (unsigned int i = 0; i < 10; ++i) {
             getMachineJobs<<<1, 1>>>(pop->cuda_objects.machines, d_job_numbers,
-                                     d_seq, d_size, 0, i);
+                                     d_seq, d_end_time, d_size, 0, i);
 
             cudaCheck(cudaMemcpy(&size, d_size, sizeof(unsigned int),
                                  cudaMemcpyDeviceToHost),
@@ -715,22 +753,24 @@ void copyResult(struct population_t *pop)
             cudaCheck(cudaMemcpy(seq, d_seq, sizeof(double) * 100,
                                  cudaMemcpyDeviceToHost),
                       "cudaMemcpy seq from device to host");
-            printf("[%d]:%u\n", i, size);
-            for (unsigned int i = 0; i < size; ++i) {
-                printf("%-10d", job_numbers[i]);
+
+            cudaCheck(cudaMemcpy(end_time, d_end_time, sizeof(double) * 100,
+                                 cudaMemcpyDeviceToHost),
+                      "cudaMemcpy seq from device to host");
+
+            for(unsigned int j = 0; j < size; ++j){
+                fprintf(file, "%d %d %.3f %.3f\n", job_numbers[j], i, seq[j], end_time[j]);
             }
-            printf("\n");
-            for (unsigned int i = 0; i < size; ++i) {
-                printf("%-9.2f ", seq[i]);
-            }
-            printf("\n");
+
         }
+        fclose(file);
     }
+    
 }
 
-void * geneticAlgorithm(void *_pop)
+void *geneticAlgorithm(void *_pop)
 {
-    struct population_t * pop = (struct population_t *)_pop;
+    struct population_t *pop = (struct population_t *) _pop;
     job_t *jobs;
     machine_t *machines;
     chromosome_base_t *chromosomes;
@@ -761,7 +801,7 @@ void * geneticAlgorithm(void *_pop)
     dim3 job_chromosome_thread(10, 100);
     dim3 job_chromosome_block(pop->parameters.AMOUNT_OF_CHROMOSOMES / 10, 1);
 
-    for (int i = 0; i < 500; ++i) {
+    for (int i = 0; i < pop->parameters.GENERATIONS; ++i) {
         binding<<<job_chromosome_block, job_chromosome_thread>>>(
             pop->cuda_objects.jobs,
             pop->chromosomes.device_chromosome.chromosomes,
@@ -842,16 +882,16 @@ void * geneticAlgorithm(void *_pop)
 
 
         {
-            cudaCheck(
-                cudaMemcpy(chromosomes,
-                           pop->chromosomes.device_chromosome.chromosomes,
-                           sizeof(chromosome_base_t) *
-                               pop->parameters.AMOUNT_OF_CHROMOSOMES,
-                           cudaMemcpyDeviceToHost),
-                "cudaMemcpy chromosomes from device to host");
-            printf("(%u-%d)[%d]fitness value = %.3f\n",pop->population_number, i,
-                   chromosomes[0].chromosome_no,
+            cudaCheck(cudaMemcpy(chromosomes,
+                                 pop->chromosomes.device_chromosome.chromosomes,
+                                 sizeof(chromosome_base_t) *
+                                     pop->parameters.AMOUNT_OF_CHROMOSOMES,
+                                 cudaMemcpyDeviceToHost),
+                      "cudaMemcpy chromosomes from device to host");
+            printf("(%u-%d)[%d]fitness value = %.3f\n", pop->population_number,
+                   i, chromosomes[0].chromosome_no,
                    chromosomes[0].fitnessValue);
+            pop->best_fitness_value = chromosomes[0].fitnessValue;
             if (chromosomes[0].fitnessValue - fitnessVaule < 0.0001) {
                 fitnessVaule = chromosomes[0].fitnessValue;
                 fitnessCounter = 0;
@@ -872,4 +912,67 @@ void * geneticAlgorithm(void *_pop)
     }
     cudaDeviceSynchronize();
     pthread_exit(NULL);
+}
+
+void swapPopulation(struct population_t pops[], const int amount_of_populations)
+{
+    // copy chromosomes from device to host
+    for (int i = 0, size = amount_of_populations; i < size; ++i) {
+        cudaCheck(
+            cudaMemcpy(
+                pops[i].chromosomes.host_chromosome.chromosomes,
+                pops[i].chromosomes.device_chromosome.chromosomes,
+                sizeof(chromosome_base_t) *
+                    pops[i]
+                        .chromosomes.host_chromosome.AMOUNT_OF_HOST_CHROMOSOMES,
+                cudaMemcpyDeviceToHost),
+            "copy chromosomes from device to host");
+    }
+
+    // copy genes
+    for (int i = 0, size = amount_of_populations; i < size; ++i) {
+        for (int j = 0, size_c = pops[i]
+                                     .chromosomes.host_chromosome
+                                     .AMOUNT_OF_HOST_CHROMOSOMES;
+             j < size_c; ++j) {
+            cudaCheck(
+                cudaMemcpy(
+                    pops[i].chromosomes.host_chromosome.genes[j],
+                    pops[i].chromosomes.host_chromosome.chromosomes[j].genes,
+                    sizeof(double) * pops[i].parameters.AMOUNT_OF_JOBS << 1,
+                    cudaMemcpyDeviceToHost),
+                "copy genes from device to host");
+        }
+    }
+
+    // swap
+    for (int i = 0, size = amount_of_populations - 1; i < size; ++i) {
+        for (int j = 0, size_c = pops[i]
+                                     .chromosomes.host_chromosome
+                                     .AMOUNT_OF_HOST_CHROMOSOMES;
+             j < size_c; ++j) {
+            cudaCheck(
+                cudaMemcpy(
+                    pops[i + 1]
+                        .chromosomes.host_chromosome.chromosomes[j]
+                        .genes,
+                    pops[i].chromosomes.host_chromosome.genes[j],
+                    sizeof(double) * pops[i].parameters.AMOUNT_OF_JOBS << 1,
+                    cudaMemcpyHostToDevice),
+                "copy genes from host to device");
+        }
+    }
+
+    for (int i = 0,
+             size_c =
+                 pops[i].chromosomes.host_chromosome.AMOUNT_OF_HOST_CHROMOSOMES;
+         i < size_c; ++i) {
+        cudaCheck(
+            cudaMemcpy(pops[0].chromosomes.host_chromosome.chromosomes[i].genes,
+                       pops[amount_of_populations - 1]
+                           .chromosomes.host_chromosome.genes[i],
+                       sizeof(double) * pops[0].parameters.AMOUNT_OF_JOBS << 1,
+                       cudaMemcpyHostToDevice),
+            "copy genes from host to device");
+    }
 }
