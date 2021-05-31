@@ -16,6 +16,7 @@ void dataPreprocessing(job_t **_jobs, machine_t ** _machines, process_time_t ***
 
 int main(int argc, const char *argv[])
 {
+    srand(time(NULL));
     string path;
     if (argc < 2) {
         path = "";
@@ -36,26 +37,42 @@ int main(int argc, const char *argv[])
     
     dataPreprocessing(&jobs, &machines, &process_times, wip, machine_csv, eqp_recipe);
 
-    population_t pop = population_t{
-        .population_number = 0,
-        .parameters = {
-            .AMOUNT_OF_JOBS = AMOUNT_OF_JOBS,
-            .AMOUNT_OF_MACHINES = AMOUNT_OF_MACHINES,
-            .AMOUNT_OF_CHROMOSOMES = 200,
-            .AMOUNT_OF_R_CHROMOSOMES = 100,
-            .EVOLUTION_RATE = 0.8,
-            .SELECTION_RATE = 0.3
-        },
-        .sample = {
-            .jobs = jobs,
-            .machines = machines,
-            .process_times = process_times
-        }
-    }; 
+    population_t sub_populations[10];
+    pthread_t threads[10];
 
-    initPopulation(&pop);
-    geneticAlgorithm(&pop);
+    for(int i = 0; i < 10; ++i){
+        sub_populations[i] = population_t{
+            .population_number = (unsigned)i,
+            .parameters = {
+                .AMOUNT_OF_JOBS = AMOUNT_OF_JOBS,
+                .AMOUNT_OF_MACHINES = AMOUNT_OF_MACHINES,
+                .AMOUNT_OF_CHROMOSOMES = 200,
+                .AMOUNT_OF_R_CHROMOSOMES = 100,
+                .EVOLUTION_RATE = 0.8,
+                .SELECTION_RATE = 0.3
+            },
+            .sample = {
+                .jobs = jobs,
+                .machines = machines,
+                .process_times = process_times
+            }
+        }; 
+    }
+    for(int i = 0; i < 10; ++i){
+        initPopulation(&sub_populations[i]);
+    }
 
+    for(int i = 0; i < 10; ++i){
+        pthread_create(&threads[i], NULL, geneticAlgorithm, &sub_populations[i]);
+    }
+
+    for(int i = 0; i < 10; ++i){
+        pthread_join(threads[i], NULL);
+    }
+
+    for(int i = 0; i < 10; ++i){
+        copyResult(sub_populations + i);
+    }
     return 0;
 }
 

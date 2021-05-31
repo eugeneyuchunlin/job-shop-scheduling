@@ -24,10 +24,10 @@ struct population_t{
     unsigned int population_number;
 
     struct {
-        const int AMOUNT_OF_JOBS;
-        const int AMOUNT_OF_MACHINES;
-        const int AMOUNT_OF_CHROMOSOMES;
-        const int AMOUNT_OF_R_CHROMOSOMES;
+        int AMOUNT_OF_JOBS;
+        int AMOUNT_OF_MACHINES;
+        int AMOUNT_OF_CHROMOSOMES;
+        int AMOUNT_OF_R_CHROMOSOMES;
         double EVOLUTION_RATE;
         double SELECTION_RATE;
     }parameters;
@@ -72,9 +72,10 @@ struct population_t{
     }evolution_factors;
 };
 
+void copyResult(struct population_t *pop);
 
 void initPopulation(struct population_t * pop);
 
-void geneticAlgorithm(struct population_t * pop);
+void *geneticAlgorithm(void * pop);
 
 #endif
