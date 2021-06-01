@@ -3,10 +3,12 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
+#include <set>
+#include <iostream>
 
 using namespace std;
 
-void createJob(job_t *job, std::map<std::string, std::string> elements){
+set<string> createJob(job_t *job, std::map<std::string, std::string> elements){
     job->base.job_no = stoul(elements["EP"]);
     job->base.arriv_t = stod(elements["ARRIV_T"]);
     job->base.end_time = job->base.start_time = 0;
@@ -16,6 +18,20 @@ void createJob(job_t *job, std::map<std::string, std::string> elements){
     job->recipe.ul_recipe = 0;
     strncpy(job->recipe.str_recipe, elements["RECIPE"].c_str(), 6);
     job->urgent = stod(elements["URGENT_W"]);
+    // cout<<elements["CANRUN_TOOL"]<<endl; 
+    string can_run_tools = elements["CANRUN_TOOL"];
+    string temp;
+    set<string> v_tools;
+    size_t start_pos = 0;
+    do{
+        temp = can_run_tools.substr(start_pos, 6);
+        v_tools.insert(temp);
+        start_pos += 6;
+        cout<<temp<<endl;
+    }while (start_pos != can_run_tools.length());
+    job->base.size_of_process_time = v_tools.size();
+
+    return v_tools;
 }
 
 __device__ __host__ double jobGetValue(void * _self){

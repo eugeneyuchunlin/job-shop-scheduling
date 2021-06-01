@@ -115,7 +115,7 @@ __global__ void initializeJobs(job_t **jobs,
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x < AMOUNT_OF_CHROMOSOMES && y < AMOUNT_OF_JOBS) {
         initJob(&jobs[x][y]);
-        ops->set_process_time(&jobs[x][y].base, process_times[y], 10);
+        ops->set_process_time(&jobs[x][y].base, process_times[y], jobs[x][y].base.size_of_process_time);
         ops->set_ms_gene_addr(&jobs[x][y].base, chromosomes[x].ms_genes + y);
         ops->set_os_gene_addr(&jobs[x][y].base, chromosomes[x].os_genes + y);
     }
@@ -759,7 +759,7 @@ void copyResult(struct population_t *pop, char *filename)
                       "cudaMemcpy seq from device to host");
 
             for(unsigned int j = 0; j < size; ++j){
-                fprintf(file, "%d %d %.3f %.3f\n", job_numbers[j], i, seq[j], end_time[j]);
+                fprintf(file, "%d %d %.3f %.3f\n", job_numbers[j], i + 1, seq[j], end_time[j]);
             }
 
         }
@@ -864,7 +864,7 @@ void *geneticAlgorithm(void *_pop)
                             &pop->evolution_factors.host,
                             pop->parameters.AMOUNT_OF_R_CHROMOSOMES);
 
-        cudaDeviceSynchronize();
+        cudaStreamSynchronize(0);
         crossover<<<1, CROSSOVER_AMOUNT>>>(
             pop->chromosomes.device_chromosome.chromosomes,
             pop->evolution_factors.device.c_selected1,

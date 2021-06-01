@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <set>
 
 struct job_t{
     job_base_t base; 
@@ -18,7 +19,7 @@ struct job_t{
     double r_qt;
 };
 
-void createJob(job_t * job, std::map<std::string, std::string> elements);
+std::set<std::string> createJob(job_t * job, std::map<std::string, std::string> elements);
 
 __device__ __host__ void initJob(job_t *);
 

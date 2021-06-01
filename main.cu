@@ -5,6 +5,7 @@
 #include <private/population.h>
 #include <iostream>
 #include <string>
+#include <set>
 #include "include/job_base.h"
 
 
@@ -106,29 +107,56 @@ void dataPreprocessing(job_t **_jobs, machine_t ** _machines, process_time_t ***
     process_time_t **process_times =
         (process_time_t **) malloc(sizeof(process_time_t *) * AMOUNT_OF_JOBS);
 
+    vector<set<string> > can_run_tools;
+
     for (unsigned int i = 0; i < AMOUNT_OF_JOBS; ++i) {
-        createJob(&jobs[i], wip.getElements(i));
+        can_run_tools.push_back(createJob(&jobs[i], wip.getElements(i)));
     }
+    
+    // for(unsigned int i = 0; i < can_run_tools.size(); ++i){
+    //     for(unsigned int j = 0; j < can_run_tools[i].size(); ++j){
+    //         cout<<can_run_tools[i][j]<<" "; 
+    //     }
+    //     cout<<endl;
+    // }
+
     for (unsigned int i = 0; i < AMOUNT_OF_MACHINES; ++i) {
         createMachine(&machines[i], machine_csv.getElements(i));
     }
+
+
     csv_t process_time_csv;
     for (unsigned int i = 0; i < AMOUNT_OF_JOBS; ++i) {
         process_time_csv =
             eqp_recipe.filter("RECIPE", jobs[i].recipe.str_recipe);
+
         unsigned int nrows = process_time_csv.nrows();
+        printf("Malloc size = %d\n", jobs[i].base.size_of_process_time);
         process_times[i] =
             (process_time_t *) malloc(sizeof(process_time_t) * nrows);
+        int k = 0;
         for (unsigned int j = 0; j < nrows; ++j) {
             map<string, string> elements = process_time_csv.getElements(j);
-            unsigned int machine_no = atoi(&elements["EQP_ID"].c_str()[3]);
-            process_times[i][j] =
-                process_time_t{.machine_no = machine_no,
-                               .process_time = jobs[i].base.qty / 25.0 *
-                                               stof(elements["PROCESS_TIME"]),
-                               .ptr_derived_object = NULL};
+            if(can_run_tools[i].count(elements["EQP_ID"]) != 0){
+                printf("(%s, %.2f) ", elements["EQP_ID"].c_str(), stof(elements["PROCESS_TIME"]));
+                unsigned int machine_no = atoi(&elements["EQP_ID"].c_str()[3]);
+                process_times[i][k] =
+                    process_time_t{.machine_no = machine_no,
+                                   .process_time = jobs[i].base.qty / 25.0 *
+                                                   stof(elements["PROCESS_TIME"]),
+                                   .ptr_derived_object = NULL};
+                k++;
+
+            }
         }
-        jobs[i].base.size_of_process_time = nrows;
+        cout<<endl;
+    }
+
+    for(unsigned int i = 0; i < AMOUNT_OF_JOBS; ++i){
+        for(unsigned int j = 0; j < jobs[i].base.size_of_process_time; ++j){
+            printf("(%d, %.3f), ", process_times[i][j].machine_no, process_times[i][j].process_time);
+        }
+        printf("\n");
     }
 
     *_jobs = jobs;
