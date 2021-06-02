@@ -115,7 +115,8 @@ __global__ void initializeJobs(job_t **jobs,
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x < AMOUNT_OF_CHROMOSOMES && y < AMOUNT_OF_JOBS) {
         initJob(&jobs[x][y]);
-        ops->set_process_time(&jobs[x][y].base, process_times[y], jobs[x][y].base.size_of_process_time);
+        ops->set_process_time(&jobs[x][y].base, process_times[y],
+                              jobs[x][y].base.size_of_process_time);
         ops->set_ms_gene_addr(&jobs[x][y].base, chromosomes[x].ms_genes + y);
         ops->set_os_gene_addr(&jobs[x][y].base, chromosomes[x].os_genes + y);
     }
@@ -236,11 +237,11 @@ __global__ void scheduling(machine_t **machines,
                 (start_time > arrival_time) ? start_time : arrival_time;
 
             jbops->set_start_time(&job->base, start_time);
-            if(start_time > job->r_qt){
-                scrapped += 1; 
+            if (start_time > job->r_qt) {
+                scrapped += 1;
             }
             start_time = jbops->get_end_time(&job->base);
-            
+
             iter = iter->next;
             prev = job;
         }
@@ -264,7 +265,7 @@ __global__ void computeFitnessValue(machine_t **machines,
             }
             totalScrapped += machines[x][i].scrapped;
         }
-        chromosomes[x].fitnessValue = maxmakespan + totalScrapped * 100;
+        chromosomes[x].fitnessValue = maxmakespan;
     }
 }
 
@@ -687,7 +688,7 @@ void copyResult(struct population_t *pop, char *filename)
         job_t *jobs;
         machine_t *machines;
         chromosome_base_t *chromosomes;
-        FILE * file = fopen(filename, "w");
+        FILE *file = fopen(filename, "w");
 
         cudaCheck(
             cudaMallocHost((void **) &jobs,
@@ -727,13 +728,13 @@ void copyResult(struct population_t *pop, char *filename)
                   "for d_seq");
         cudaCheck(cudaMallocHost((void **) &seq, sizeof(double) * 100),
                   "cudaMallocHost for seq");
-       
+
         cudaCheck(cudaMalloc((void **) &d_end_time, sizeof(double) * 100),
                   "cudaMalloc"
                   "for d_end_time");
         cudaCheck(cudaMallocHost((void **) &end_time, sizeof(double) * 100),
                   "cudaMallocHost for end_time");
-       
+
 
 
         for (unsigned int i = 0; i < 10; ++i) {
@@ -758,14 +759,13 @@ void copyResult(struct population_t *pop, char *filename)
                                  cudaMemcpyDeviceToHost),
                       "cudaMemcpy seq from device to host");
 
-            for(unsigned int j = 0; j < size; ++j){
-                fprintf(file, "%d %d %.3f %.3f\n", job_numbers[j], i + 1, seq[j], end_time[j]);
+            for (unsigned int j = 0; j < size; ++j) {
+                fprintf(file, "%d %d %.3f %.3f\n", job_numbers[j], i + 1,
+                        seq[j], end_time[j]);
             }
-
         }
         fclose(file);
     }
-    
 }
 
 void *geneticAlgorithm(void *_pop)
